@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Frank's MineSweeper!</title>
+</head>
+
+<body onload="initGame('expert')">
+    <div class="middle">
+        <h1>Frank's MineSweeper!</h1>
+        <div class="topbar-container">
+            <h2 class="lives"></h2>
+            <span onclick="initGame()" class="reaction"></span>
+            <h2 class="timer"></h2>
+            
+        </div>
+        <button class="level" onclick="initGame('easy')">Easy</button>
+        <button class="level" onclick="initGame('medium')">Medium</button>
+        <button class="level" onclick="initGame('expert')">Expert</button>
+        <table border="1" cellpadding="10" rules=none>
+
+            <tbody class="board"></tbody>
+        </table>
+    </div>
+    <script src="js/util.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
