@@ -7,7 +7,11 @@ var gBoard;
 var timervar = null
 var gGame;
 var currlevelText;
-var highestscore = localStorage.getItem('BestTime');
+var highestscore = {
+    'easy': localStorage.getItem('BestTimeEasy'),
+    'medium': localStorage.getItem('BestTimeMedium'),
+    'expert': localStorage.getItem('BestTimeHard')
+}
 const gLevel = {
     easy: { SIZE: 4, MINES: 2 },
     medium: { SIZE: 8, MINES: 12 },
@@ -24,11 +28,11 @@ window.oncontextmenu = function () {
 }
 
 function initGame(level) {
-    emojiReaction.innerText=EMOJI.normal
+    emojiReaction.innerText = EMOJI.normal
     userLives = 3
     clearInterval(timervar)
     timervar = null;
-        gGame = {
+    gGame = {
         isOn: true,
         shownCount: 0,
         markedCount: 0,
@@ -36,13 +40,13 @@ function initGame(level) {
         isMinesSet: false
     }
     document.querySelector('.timer').innerText = `Time:${parseTimer(0)}`;
-    
     displayLives()
     if (!level) {
         level = currlevelText
     }
     currlevelText = `${level}`
     currLevel = gLevel[level];
+    document.querySelector('.highest-score').innerText = `Highest Score in this level : ${parseTimer(highestscore[currlevelText])}`;
     gBoard = buildBoard(currLevel.SIZE)
     renderBoard(gBoard)
     console.log(gBoard)
@@ -151,12 +155,32 @@ function checkGameOver() {
             emojiReaction.innerText = EMOJI.win;
             gGame.isOn = false;
             clearInterval(timervar)
-            var best = localStorage.getItem('BestTime');
-            if (best>gGame.secsPassed ||!best){
-                localStorage.setItem('BestTime',gGame.secsPassed);
-                document.querySelector('.highestscore').innerText = parseTimer(gGame.secsPassed);
+            if (currlevelText === 'easy') {
+                var bestEasy = localStorage.getItem('BestTimeEasy');
+                if (bestEasy > gGame.secsPassed || !bestEasy) {
+                    highestscore.easy= localStorage.setItem('BestTimeEasy', gGame.secsPassed);
+                    
+                    return true;
+                }
             }
-            return true;
+            if (currlevelText === 'medium') {
+                var bestMedium = localStorage.getItem('BestTimeMedium');
+                if (bestMedium > gGame.secsPassed || !bestMedium) {
+                    localStorage.setItem('BestTimeMedium', gGame.secsPassed);
+                    highestscore.medium = `${parseTimer(highestscore.medium)}`;
+                    return true;
+                }
+            }
+            if (currlevelText === 'expert') {
+
+                var bestHard = localStorage.getItem('BestTimeHard');
+                if (bestHard > gGame.secsPassed || !bestHard) {
+                    localStorage.setItem('BestTimeHard', gGame.secsPassed);
+                    highestscore.expert = `${parseTimer(highestscore.expert)}`;
+                    return true;
+                }
+            }
+
         }
     }
 
