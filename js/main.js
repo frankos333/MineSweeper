@@ -8,9 +8,9 @@ var timervar = null
 var gGame;
 var currlevelText;
 var highestscore = {
-    'easy': localStorage.getItem('BestTimeEasy'),
-    'medium': localStorage.getItem('BestTimeMedium'),
-    'expert': localStorage.getItem('BestTimeHard')
+    easy: localStorage.getItem('BestTimeEasy'),
+    medium: localStorage.getItem('BestTimeMedium'),
+    expert  : localStorage.getItem('BestTimeHard')
 }
 const gLevel = {
     easy: { SIZE: 4, MINES: 2 },
@@ -29,6 +29,7 @@ window.oncontextmenu = function () {
 
 function initGame(level) {
     emojiReaction.innerText = EMOJI.normal
+    document.querySelector('.highest-score').innerText = `Highest Score in this level : ${parseTimer(highestscore[level])}`;
     userLives = 3
     clearInterval(timervar)
     timervar = null;
@@ -46,10 +47,9 @@ function initGame(level) {
     }
     currlevelText = `${level}`
     currLevel = gLevel[level];
-    document.querySelector('.highest-score').innerText = `Highest Score in this level : ${parseTimer(highestscore[currlevelText])}`;
     gBoard = buildBoard(currLevel.SIZE)
     renderBoard(gBoard)
-    console.log(gBoard)
+    
 }
 function buildBoard(size) {
     var board = [];
@@ -114,6 +114,7 @@ function setMinesNegsCount(board, rowIdx, colIdx) {
 function cellClicked(elCell, rowIdx, colIdx) {
     if (!gGame.isOn) return;
     if (!gGame.isMinesSet) createMines(rowIdx, colIdx)
+    console.log(gBoard)
     if (!timervar) {
         timervar = setInterval(function () {
             gGame.secsPassed++;
@@ -158,17 +159,17 @@ function checkGameOver() {
             if (currlevelText === 'easy') {
                 var bestEasy = localStorage.getItem('BestTimeEasy');
                 if (bestEasy > gGame.secsPassed || !bestEasy) {
-                    highestscore.easy= localStorage.setItem('BestTimeEasy', gGame.secsPassed);
+                     localStorage.setItem('BestTimeEasy', gGame.secsPassed);
+                     highestscore.easy=localStorage.getItem('BestTimeEasy');
                     
-                    return true;
                 }
             }
             if (currlevelText === 'medium') {
                 var bestMedium = localStorage.getItem('BestTimeMedium');
                 if (bestMedium > gGame.secsPassed || !bestMedium) {
                     localStorage.setItem('BestTimeMedium', gGame.secsPassed);
-                    highestscore.medium = `${parseTimer(highestscore.medium)}`;
-                    return true;
+                    highestscore.medium = localStorage.getItem('BestTimeMedium');
+                    
                 }
             }
             if (currlevelText === 'expert') {
@@ -176,12 +177,12 @@ function checkGameOver() {
                 var bestHard = localStorage.getItem('BestTimeHard');
                 if (bestHard > gGame.secsPassed || !bestHard) {
                     localStorage.setItem('BestTimeHard', gGame.secsPassed);
-                    highestscore.expert = `${parseTimer(highestscore.expert)}`;
-                    return true;
+                    highestscore.expert = localStorage.getItem('BestTimeHard');
                 }
             }
-
+            
         }
+        return true;
     }
 
 }
@@ -207,7 +208,6 @@ function expandShown(board, i, j) {
 function onMineClicked(row, col) {
     if (userLives > 1) {
         var currMine = document.getElementById(`${row}-${col}`)
-        console.log(currMine)
         currMine.classList.add('bomb')
         currMine.innerText = BOMB
         userLives--;
