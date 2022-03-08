@@ -1,0 +1,132 @@
+AWSTemplateFormatVersion : '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: CloudFormation template for atlasIacScanResults
+Parameters:
+    Environment:
+        Type: String
+        AllowedValues: ['dev', 'prod']
+        Default: 'dev'
+Mappings:
+    ParameterMap:
+        dev:
+            InternalSubnets: atlas-vpc-InternalSubnets
+        prod:
+            InternalSubnets: atlas-vpc-InternalSubnetsExtended
+Resources:
+  lambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      VpcConfig:
+        SecurityGroupIds:
+          - '{{resolve:ssm:/atlas/lambdas/security-group-id:1}}'
+        SubnetIds:
+          Fn::Split:
+            - ","
+            - Fn::ImportValue: !FindInMap [ParameterMap, !Ref Environment, InternalSubnets]
+      Handler: lambda_handler
+      FunctionName: atlasIacScanResults
+      Environment:
+        Variables:
+          ATLAS_ENV: !Ref Environment
+          ATLAS_IAC_KINESIS_RESULT_STREAM: atlasIacScanResults
+          SKIP_ERRORS: "true" # set to true if you want skip errors and just log them so the scanning will continue
+          ATLAS_SCAN_RESULT_FAILED_BUCKET: !Join ["-", ["stb-scan-results-failed", !Ref Environment,!Sub "${AWS::Region}"]]
+          ATLAS_STB_RESULTS_BUCKET: !Join ["-", ["stb-scan-results", !Ref Environment,!Sub "${AWS::Region}"]]
+      Runtime: go1.x
+      CodeUri: ./
+      Policies:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaVPCAccessExecutionRole
+        - Statement:
+            - Action:
+                - ssm:GetParameter
+              Effect: Allow
+              Resource:
+                - "arn:aws:ssm:*:*:parameter/atlas/postgres/db_host"
+        - Statement:
+            - Action:
+                - "rds-db:connect"
+              Effect: Allow
+              Resource:
+                - "arn:aws:rds-db:us-east-1:*:dbuser:*/main_iam"
+        - Statement:
+            - Action:
+                - s3:PutObject
+              Effect: Allow
+              Resource:
+                - !Join
+                  - '/'
+                  - - Fn::ImportValue: !Sub 'stbScanResultsFailedS3-BucketARN'
+                    - '*'
+        - Statement:
+            - Action:
+                - s3:GetObject
+              Effect: Allow
+              Resource:
+                - !Join
+                  - '/'
+                  - - Fn::ImportValue: !Sub 'stbScanResult-BucketARN'
+                    - '*'
+      MemorySize: 512
+      Timeout: 900
+      Tags:
+        env: !Join ['-', ['atlas', !Ref Environment]]
+        datadog: "true"
+      ReservedConcurrentExecutions: 100
+      Events:
+        Stream:
+          Type: Kinesis
+          Properties:
+            Stream:
+              !Sub 'arn:aws:kinesis:${AWS::Region}:${AWS::AccountId}:stream/atlasIacScanResults'
+            BatchSize: 100
+            BisectBatchOnFunctionError: true # If the function returns an error, split the batch in two and retry.
+            MaximumRetryAttempts: 50
+            MaximumRecordAgeInSeconds: 28800
+            StartingPosition: TRIM_HORIZON
+  LambdaFunctionLogGroup:
+    Type: AWS::Logs::LogGroup
+    DependsOn: lambdaFunction
+    Properties:
+      RetentionInDays: 14
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - /aws/lambda/
+            - Ref: lambdaFunction
+  LambdaSubscriptionFilter:
+    Type: AWS::Logs::SubscriptionFilter
+    Properties:
+      LogGroupName: !Ref LambdaFunctionLogGroup
+      DestinationArn: "{{resolve:ssm:/datadog/lambda_arn:1}}"
+      FilterPattern: ""
+  S3InvokeLambdaPermission:
+    DependsOn: lambdaFunction
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: atlasIacScanResults
+      Principal: s3.amazonaws.com
+      SourceArn:
+        Fn::ImportValue: !Sub 'stbScanResult-BucketARN'
+      SourceAccount:
+        !Sub '${AWS::AccountId}'
+Outputs:
+  functionArn:
+    Value:
+      Fn::Join:
+        - ''
+        - - 'arn:aws:apigateway:'
+          - Ref: AWS::Region
+          - ":lambda:path/2015-03-31/functions/"
+          - Fn::GetAtt:
+              - lambdaFunction
+              - Arn
+          - "/invocations"
+    Description: Function ARN for atlasIacScanResults
+    Export:
+      Name: !Sub ${AWS::StackName}-functionArn
+  arn:
+    Value: !GetAtt lambdaFunction.Arn
+    Description: function arn
+    Export:
+      Name: !Sub ${AWS::StackName}-Arn
